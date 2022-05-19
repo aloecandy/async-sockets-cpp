@@ -11,9 +11,14 @@ public:
 
     explicit TCPServer(FDR_ON_ERROR): BaseSocket(onError, SocketType::TCP)
     {
+        #ifdef _WIN64
+        char opt = 1;
+        setsockopt(this->sock,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(int));
+        #else
         int opt = 1;
         setsockopt(this->sock,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(int));
         setsockopt(this->sock,SOL_SOCKET,SO_REUSEPORT,&opt,sizeof(int));
+        #endif
     }
 
     // Binding the server.
@@ -28,7 +33,7 @@ public:
         this->address.sin_family = AF_INET;
         this->address.sin_port = htons(port);
 
-        if (bind(this->sock, (const sockaddr *)&this->address, sizeof(this->address)) < 0)
+        if (::bind(this->sock, (const sockaddr *)&this->address, sizeof(this->address)) < 0)
         {
             onError(errno, "Cannot bind the socket.");
             return;
@@ -52,8 +57,11 @@ public:
     // Overriding Close to add shutdown():
     void Close()
     {
+        #ifdef _WIN64
+        shutdown(this->sock, SD_BOTH);
+        #else
         shutdown(this->sock, SHUT_RDWR);
-        
+        #endif
         BaseSocket::Close();
     }
 

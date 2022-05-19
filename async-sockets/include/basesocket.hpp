@@ -6,6 +6,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <netdb.h>
+#elif _WIN64
+#include <WinSock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "Ws2_32.lib")
 #elif _WIN32
 #include <winsock32.h>
 #endif
@@ -42,6 +46,11 @@ protected:
 
     BaseSocket(FDR_ON_ERROR, SocketType sockType = TCP, int socketId = -1)
     {
+        #ifdef _WIN64
+        WSADATA wsaData;
+        WSAStartup(MAKEWORD(2, 2), &wsaData);
+        #endif
+
         if (socketId < 0)
         {
             if ((this->sock = socket(AF_INET, sockType, 0)) < 0)
@@ -61,7 +70,11 @@ public:
         if(isClosed) return;
 
         isClosed = true;
+        #ifdef _WIN64
+        closesocket(this->sock);
+        #else
         close(this->sock);
+        #endif
     }
 
     std::string remoteAddress() {return ipToString(this->address);}
